@@ -1,0 +1,9 @@
+# Environment variables and database passwords
+.env
+.env.*
+
+# Dependencies
+node_modules/
+
+# Debug logs
+npm-debug.log*
