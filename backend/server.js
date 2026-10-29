@@ -1,4 +1,3 @@
-
 require("dotenv").config();
 
 const express = require("express");
@@ -10,19 +9,15 @@ const cookieParser = require("cookie-parser");
 
 const app = express();
 const PORT = Number(process.env.PORT) || 5000;
-const JWT_SECRET = process.env.JWT_SECRET;
+// CHANGED: Added fallback so it doesn't crash if .env is missing during build
+const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_change_me_in_production";
 
-if (!JWT_SECRET) {
-  console.error("ERROR: JWT_SECRET is missing from backend/.env");
-  process.exit(1);
-}
-
+// CHANGED: Use DATABASE_URL and SSL for Neon/Cloud deployment
 const pool = new Pool({
-  host: process.env.DB_HOST || "localhost",
-  port: Number(process.env.DB_PORT) || 5432,
-  database: process.env.DB_NAME || "load_shedding_tracker",
-  user: process.env.DB_USER || "postgres",
-  password: process.env.DB_PASSWORD,
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false,
+  },
 });
 
 pool.on("error", (error) => {
@@ -1156,12 +1151,15 @@ app.use((req, res) => {
 async function startServer() {
   try {
     await pool.query("SELECT 1");
-
     console.log("PostgreSQL connection successful.");
 
-    app.listen(PORT, () => {
-      console.log(`PowerTrack SA API running at http://localhost:${PORT}`);
-    });
+    // CHANGED: Vercel handles the listening automatically.
+    // We only call app.listen if we are NOT on Vercel.
+    if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
+      app.listen(PORT, () => {
+        console.log(`PowerTrack SA API running at http://localhost:${PORT}`);
+      });
+    }
   } catch (error) {
     console.error("Could not connect to PostgreSQL:", error.message);
     process.exit(1);
@@ -1169,3 +1167,5 @@ async function startServer() {
 }
 
 startServer();
+
+module.exports = app; // CHANGED: Export app for Vercel serverless functions
